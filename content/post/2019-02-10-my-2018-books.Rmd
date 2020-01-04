@@ -1,0 +1,45 @@
+---
+title: My 2018 books
+author: Felipe
+date: '2019-02-10'
+slug: my-2018-books
+categories:
+  - R
+  - Data Science
+tags: [shiny, plotly, books]
+description: ''
+featured_image: ''
+---
+
+One of the things I love to do but can't find enough time to do nowadays is to read books. It's not only
+finding the time but also making the time when there are so many distractions after a day of work or when
+the kids go to bed. I estimate I've read around 300-350 books in my life, but in the last 
+few years I felt that I was lacking a rythym and was reading far few books, seeing my personal library
+accumulate unread books, as well as leaving too many books unread or taking too long to 
+finish a book when I felt it was being a drag. 
+
+So last year (2018) I wanted to take on setting a goal in terms of books read that keeps me active and 
+on pace. As I have a 
+[goodreads](https://www.goodreads.com) account, I decided to take on the "Reading Challenge" and 
+I set to finish 30 books in 2018. In this case, "reading" means both actual reading from books and
+e-books, but also includes listening audiobooks, or a mix of both. 
+
+To give this blog a data-science-y flavour, at the end of the year I donwloaded my list of books read for 
+2018 and created a _shiny Rmarkdown (flex)dashboard_. If you are unfamiliar with that last expression, let's 
+unpack it:
+
+  * [shiny](https://shiny.rstudio.com/) is an R package that makes interactive web apps from R(Studio).
+  * [flexdashboard](https://rmarkdown.rstudio.com/flexdashboard/) is a RMarkdown template that makes
+  sleek dashboards.
+
+Check my shiny dashboard of my [2018 books here](https://fmarinp.shinyapps.io/booksdashboard)
+
+here is an screenshot of it
+
+![](/images/books2018Dashboard.png)
+
+
+
+Some insights: 
+
+* I read 31 books in 2018 - not bad! 

@@ -1,0 +1,166 @@
+---
+title: 'Makeover monday: Price of a night out'
+author: Felipe Marin
+date: '2018-11-26'
+slug: makeover-monday-price-of-a-night-out
+categories:
+  - Visualisation
+tags: [R, plotly, MakeoverMonday]
+description: ''
+featured_image: ''
+---
+```{r, echo=FALSE}
+knitr::opts_chunk$set(comment=NA, fig.width=6, fig.height=6, warning = FALSE, message=FALSE)
+```
+
+It was my first participation in [#MakeoverMonday](https://www.makeovermonday.co.uk/), 
+a weekly workshop where participants submit different visualisations from a dataset 
+available for that week. It's a great initiative
+and a way to discover and practice new ways of communicating insights from data. 
+
+Usually the submissions are made in [Tableau Public](https://public.tableau.com/) as the 
+authors of the blog are "Tableau Zen Masters".
+I have used 
+Tableau a few times, and it's certainly in my wish list to learn, 
+but since I have a bit of practice and it's more relevant for
+work 
+I will be using [plotly in R](https://plot.ly/r/) to generate these visuals, 
+although it make time some more time as there
+is more coding involved. 
+
+This week the theme was ['The cost of a night out'](https://www.thrillist.com/news/nation/cost-of-a-night-out-cities-around-the-world) 
+from selected cities
+around the world. 
+The original plot show the cost of a 'club' night out, itemising costs of club entry, a 'Big Mac',
+taxi and two drinks.  The costs vary greatly, from a highest average cost of $93 in Zurich, while the lowest 
+was in Mexico city where a party night for two costs $20 on average.
+
+The data that could be used included also the average costs of a 'date night' out. I wanted to include both 
+costs in the visual, which I will generate in plotly. To start, let's load the libraries
+
+```{r}
+#load libraries
+library(plotly)
+library(readxl)
+library(dplyr)
+library(magrittr)
+```
+
+```{r, include = FALSE}
+# Sys.setenv("plotly_username"="fmarinp")
+# Sys.setenv("plotly_api_key"="Uxyx970oW9MktIffPNVn")
+
+```
+
+I  downloaded  the data, but using the package `data.world` it is possible to grab the data directly 
+from the web.
+
+```{r, echo=FALSE}
+#get data
+file_location <- "/Users/fmarinp/Downloads/Cost of a night out around the world.xlsx"
+ubs_data <- read_excel(file_location, sheet = 1 )
+```
+
+The plot I have in mind is called ["tornado diagram"](https://en.wikipedia.org/wiki/Tornado_diagram), where
+I will the itemised costs of a night out for the different cities.
+
+The 'tornado' look is given by sorting the total costs in descending order. I
+do some basic manipulation in `dplyr` to get the total cost by category and 
+city, so I can put the city with the most expensive date night on top:
+
+```{r}
+#get ranking of cities by cost of date night
+rank_cities <- ubs_data %>%
+  filter(Category == 'Date night') %>%
+  group_by(City) %>% 
+  summarise(totalCost = sum(Cost)) %>%
+  arrange(totalCost) %>%
+  select(City) %>% pull()
+
+#City as factor sorted by date night cost
+ubs_data$City  = factor(ubs_data$City, levels = rank_cities)
+
+#order items as well.
+ubs_data$Item  = factor(ubs_data$Item, 
+                        levels = c("Dinner" ,"Drinks at Dinner",
+                                   "Cinema entry", "Taxi", 
+                                   "Big Mac","Club entry", 
+                                   "2 Longdrinks"))
+```
+
+
+I will use `plotly` to generate the figure. First, I organise my data frame in a way that I can plot
+both date nights and party nights at the same level. In this case, the party nights will be on the 
+negative side of x
+
+```{r}
+dataPlot <- ubs_data %>% 
+  mutate(MyCost = ifelse(Category == 'Date night', Cost, -Cost)) 
+
+#this makes the ticks on the negative side to show positive sign
+tick_vals = c(-100,-50,0,50,100,150,200)
+tick_labels = c('100','50','0','50','100','150','200')
+```
+
+
+For the color palette, I choose shades of blue for the date night, shades of red for party night
+using [`colorRampPalette`](https://moderndata.plot.ly/create-colorful-graphs-in-r-with-rcolorbrewer-and-plotly/)
+```{r}
+#date night
+b <- colorRampPalette(c("lightslateblue","skyblue"))
+myBlues <- b(3)
+
+#party night
+r <- colorRampPalette(c('firebrick1','salmon1'))
+myReds <- r(4)
+```
+
+
+I also want to show  a link for the source data as an annotation
+```{r}
+a <- list(
+  x = -0.05,
+  y = -0.1,
+  text = "Source: <a href='https://www.ubs.com/microsites/prices-earnings/en/stories/7-dinner-in-paris-party-in-miami-the-cheapest-and-priciest-cities-for-a-night-out/'>UBS</a>",
+  xref = "paper",
+  yref = "paper",
+  showarrow = FALSE
+)
+```
+
+Finally the call, adding title - and the plot! 
+```{r}
+p<- plot_ly() %>%
+  add_bars(data= dataPlot,
+          x = ~MyCost,
+          y = ~City,
+          group = ~Item,
+          type = 'bar',
+          showLegend = TRUE,
+          text  = ~paste0(Item,": $",Cost),
+          hoverinfo = 'text',
+          orientation = 'h',
+          marker = list(
+            color = factor(dataPlot$Item,
+                    labels=c(myBlues, myReds))))%>%
+  layout(barmode = 'relative',
+         xaxis = list(title= "Cost ($USD)",
+                tickvals = tick_vals, ticktext= tick_labels),
+         yaxis = list(title = ""),
+         title = 'Makeover Monday 48: Cost of a night out around the world',
+         margin = list(l = 100, r = 20, t = 70, b = 70),
+         paper_bgcolor = 'rgb(248, 248, 255)',
+         plot_bgcolor = 'rgb(248, 248, 255)',
+         annotations = a,
+         width = 650, 
+         height = 500)
+
+```
+
+Voila !
+
+```{r, echo=F}
+p
+#api_create(p, filename = "r-makeoverMonday-201848-costNightOut")
+```
+

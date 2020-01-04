@@ -1,0 +1,136 @@
+---
+title: 'Makeover Monday: Diversity in Puzzle constructors'
+author: Felipe Marin
+date: '2018-12-03'
+slug: makeover-monday-diversity-in-puzzle-constructors
+categories:
+  - Visualisation
+tags:
+  [R, plotly, MakeoverMonday]
+description: ''
+featured_image: ''
+---
+
+```{r, echo=FALSE}
+knitr::opts_chunk$set(comment=NA, fig.width=9, fig.height=6, warning = FALSE, message=FALSE)
+```
+
+This week the challenge was to explore a dataset of women who contributed 
+to the New York Times crossword along the years, during the tenure of
+Will Shortz. 
+
+In the original [article](https://www.xwordinfo.com/Women) it was palpable
+the under-representation by female contributors: From 922 puzzle constructors only 223
+were women. 
+
+I load the following packages:
+```{r}
+#load libraries
+library(plotly)
+library(readr)
+library(dplyr)
+library(magrittr)
+library(data.world) #where data lives
+```
+
+
+```{r, echo=FALSE}
+
+dw_womenCons <- "https://data.world/makeovermonday/2018w49/"
+
+raw_data <- data.world::query(data.world::qry_sql("SELECT * 
+                                            FROM women_constructors_in_the_shortz_era"),
+                        dataset = dw_womenCons)
+
+```
+
+
+I create a custom function for the animation
+```{r}
+accumulate_by <- function(dat, var) {
+  var <- lazyeval::f_eval(var, dat)
+  lvls <- plotly:::getLevels(var)
+  dats <- lapply(seq_along(lvls), function(x) {
+  cbind(dat[var %in% lvls[seq(1, x)], ], frame = lvls[[x]])
+  })
+  dplyr::bind_rows(dats)
+}
+```
+
+Then I add the percentage of women for each day per year
+```{r}
+#let's get percentage of women
+dataPlot <- raw_data %>% 
+  mutate(percWomen = round(women/(women+men)*100,2),
+         percMen = round(men/(women+men)*100,2)) 
+
+dataPlot$weekday <- factor(dataPlot$weekday,
+              levels = c('Mon','Tue','Wed','Thu','Fri','Sat','Sun'))
+dataPlot %<>% 
+  mutate(nWeek = as.numeric(weekday))
+
+#stats per year
+dataYear <- dataPlot %>% 
+  mutate(yeardate  = year) %>%
+  group_by(yeardate) %>%
+  summarise(percWomen = mean(percWomen, na.rm=T)) %>%
+  accumulate_by(~yeardate) %>%
+  mutate(year=frame)
+  
+```
+
+
+The code below build the two side-to-side plots and the bar
+```{r}
+basePlot <- dataPlot %>%
+  plot_ly(x = ~nWeek, y = ~percWomen,
+          text = ~paste0("total female constructors ",year,": ",women), 
+          hoverinfo = "text") 
+
+tick_vals = c(1,2,3,4,5,6,7)
+tick_labels = c('Mon','Tue','Wed','Thu','Fri','Sat','Sun')
+
+#barplot 
+p1 <- basePlot %>%
+  add_bars( frame = ~year) %>%
+  layout(xaxis = list(range=c(0.4,7.6),
+                      tickvals = tick_vals, 
+                      ticktext= tick_labels,
+                      title = 'day of week (1-7: Mon-Sun)'),
+      yaxis = list(title = "% of female constructors"),
+         margin = list(t=70)) %>%
+  add_annotations(
+    text = "Women crosswords constructors in the NYT's Shortz Era - from <a href='https://www.xwordinfo.com/Women'>XWordInfo</a>",
+    x = 0,
+    y = 1.1,
+    yref = "paper",
+    xref = "paper",
+    xanchor = "left",
+    yanchor = "top",
+    showarrow = FALSE,
+    font = list(size = 18)
+  )
+
+#yearly plot
+p2 <- plot_ly(dataYear) %>%
+  add_lines(x=~yeardate, y=~percWomen, frame = ~year,color=I('orange'),
+            text = ~paste0("weekly average: ",round(percWomen,1),"%"),
+            hoverinfo='text') %>%
+  layout(xaxis = list(range=c(1993,2017),title="year"),
+         margin = list(t = 70),
+         paper_bgcolor = 'rgb(248, 248, 255)',
+         plot_bgcolor = 'rgb(248, 248, 255)') 
+  
+#animation slider
+pp <- subplot(p1,p2,nrows=1,widths=c(0.7,0.3), titleX=TRUE,shareY = T,shareX=F) %>%
+  hide_legend() %>%
+ animation_opts(frame=1000,transition = 0) %>%
+  animation_slider(
+    currentvalue = list(prefix = "year ", font = list(color="gray"))
+  )
+
+
+pp
+```
+
+
